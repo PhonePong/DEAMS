@@ -1,9 +1,12 @@
 library(xlsx)
 library(ggplot2)
+library(ggpubr)
 library(survMisc)
 library(survival)
 library(survminer)
 library(data.table)
+library(grid)
+library(gridExtra)
 
 source("misc.R")
 
@@ -30,10 +33,24 @@ write(AllData$Time.Between.Failure, "data/Time_Between_Failure.txt", sep = "\n")
 #Failure Times
 Time.to.Fail.Surv <- Surv(AllData$Time.to.Fail)
 Time.to.Fail.km <- survfit(Time.to.Fail.Surv ~ 1, conf.int = .95, conf.type = "plain")
-ggsurvplot(Time.to.Fail.km, title = "Kaplan Meier: Time to Failure", ggtheme = theme_gray(base_size = 15), conf.int = TRUE, color = "black", conf.int.fill = "black") + labs(x = "HOURS", y = "RELIABILITY")+coord_cartesian(expand = FALSE)
+#UNRELIABILITY
+p1 <- ggsurvplot(Time.to.Fail.km, ggtheme = theme_gray(base_size = 20), fun = "event", conf.int = TRUE, color = "black", conf.int.fill = "black") + ggtitle("Kaplan Meier: Time to Failure") + labs(x = "HOURS", y = "UNRELIABILITY (CDF)")+coord_cartesian(expand = FALSE) 
+#RELIABILITY
+p2 <- ggsurvplot(Time.to.Fail.km, ggtheme = theme_gray(base_size = 20), conf.int = TRUE, color = "black", conf.int.fill = "black")+ggtitle("Kaplan Meier: Time to Failure") + labs(x = "HOURS", y = "RELIABILITY")+coord_cartesian(expand = FALSE)
+
 
 #Inter-Failure Times
-ggplot(data=AllData, aes(Time.to.Fail,Time.Between.Failure))+geom_point()+geom_line()
+p3 <- ggplot(data=AllData, aes(Time.to.Fail,Time.Between.Failure))+ggtitle("Time Between Failures")+ labs(x ="HOURS", y = "TIME BETWEEN FAILURES") + theme(axis.title = element_text(size=22), axis.text=element_text(size=16)) + geom_point()+geom_line()+ theme(plot.title = element_text(size = 24))
+                                                                                                                                    
 # Time.Between.Fails.Surv <- Surv(AllData$Time.Between.Failure)
 # Time.Between.Fails.km <- survfit(Time.Between.Fails.Surv ~ 1, conf.int = .95, conf.type = "plain")
 # ggsurvplot(Time.Between.Fails.km, title = "Kaplan Meier: Times Between Failures", ggtheme = theme_gray(base_size = 15), conf.int = TRUE, color = "black", conf.int.fill = "black") + labs(x = "HOURS", y = "RELIABILITY")+coord_cartesian(expand = FALSE)
+
+#==========================================================
+#Multiple ggplots on 1 page 
+#from ggpubr package
+ggarrange(p1$plot, p2$plot, p3, ncol = 2, nrow = 2) %>% ggexport(filename = "data/test.png", width = 1080, height = 900)
+#OR 
+#from gridExtra package
+# grid.arrange(p1$plot,p2$plot,p3, ncol = 2) 
+#==========================================================

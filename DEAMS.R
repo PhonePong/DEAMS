@@ -30,9 +30,10 @@ write(AllData$Time.Between.Failure, "data/Time_Between_Failure.txt", sep = "\n")
 #Failure Times
 Time.to.Fail.Surv <- Surv(AllData$Time.to.Fail)
 Time.to.Fail.km <- survfit(Time.to.Fail.Surv ~ 1, conf.int = .95, conf.type = "plain")
-ggsurvplot(Time.to.Fail.km, title = "Time to Failure", ggtheme = theme_gray(base_size = 15), conf.int = TRUE, color = "black", conf.int.fill = "black") + labs(x = "HOURS", y = "RELIABILITY")+coord_cartesian(expand = FALSE)
+ggsurvplot(Time.to.Fail.km, title = "Kaplan Meier: Time to Failure", ggtheme = theme_gray(base_size = 15), conf.int = TRUE, color = "black", conf.int.fill = "black") + labs(x = "HOURS", y = "RELIABILITY")+coord_cartesian(expand = FALSE)
 
 #Inter-Failure Times
-Time.Between.Fails.Surv <- Surv(AllData$Time.Between.Failure)
-Time.Between.Fails.km <- survfit(Time.Between.Fails.Surv ~ 1, conf.int = .95, conf.type = "plain")
-ggsurvplot(Time.Between.Fails.km, title = "Times Between Failures", ggtheme = theme_gray(base_size = 15), conf.int = TRUE, color = "black", conf.int.fill = "black") + labs(x = "HOURS", y = "RELIABILITY")+coord_cartesian(expand = FALSE)
+ggplot(data=AllData, aes(Time.to.Fail,Time.Between.Failure))+geom_point()+geom_line()
+# Time.Between.Fails.Surv <- Surv(AllData$Time.Between.Failure)
+# Time.Between.Fails.km <- survfit(Time.Between.Fails.Surv ~ 1, conf.int = .95, conf.type = "plain")
+# ggsurvplot(Time.Between.Fails.km, title = "Kaplan Meier: Times Between Failures", ggtheme = theme_gray(base_size = 15), conf.int = TRUE, color = "black", conf.int.fill = "black") + labs(x = "HOURS", y = "RELIABILITY")+coord_cartesian(expand = FALSE)

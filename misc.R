@@ -56,3 +56,13 @@ make.interval.Surv <- function(failureData){
   rm(list = c("t", "count"))
   return(Surv(failureData, status))
 }
+
+#this function accepts a column, and a list of 2 items; 
+#regex for grep, & corresponding replacements
+clean.column <- function(column, solutions){
+  # todo!
+  for (i in seq_along(solutions[[1]])) {
+    column[which(column %in% unique(grep(solutions[[1]][i], column, ignore.case = TRUE, value = TRUE)))] <- solutions[[2]][i] 
+  }
+  return(column)
+}

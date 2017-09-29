@@ -15,19 +15,42 @@ AllData <- read.xlsx(filePath, 1, startRow = 6, colIndex = c(1, 4, 5, 6, 7, 9))
 AllData$Type <- gsub('DEAMS - ', '', AllData$Type)
 AllData$Severity <- gsub('Severity ', '', AllData$Severity)
 AllData <- AllData[order(AllData$Submit.Date), ]
+
+#===================================================================================
 # Regex to get the locations and customer (after this should drop description)
-AllData$Location <- trimws(sapply(regmatches(AllData$Description, gregexpr("(?<=Base:).*?(?=\\w).*?(?=(\\s{2,3})|((I|i)ssue:))", AllData$Description, perl = TRUE)), '[',1))
+# Who they are
 AllData$Customer <- trimws(sapply(regmatches(AllData$Description, gregexpr("(?<=((C|c)ustomer:)).*?(?=\\w).*?(?=(\\s{2,3})|((E|e)mail:))", AllData$Description, perl = TRUE)), '[',1))
+# Where they are
+AllData$Location <- trimws(sapply(regmatches(AllData$Description, gregexpr("(?<=Base:).*?(?=\\w).*?(?=(\\s{2,3})|((I|i)ssue:))", AllData$Description, perl = TRUE)), '[',1))
+# tell them to stop complaining!
+AllData$Phone <- trimws(sapply(regmatches(AllData$Description, gregexpr("(?<=((P|p)hone:)).*?(?=\\w).*?(?=(\\s{2,3})|((B|b)ase:))", AllData$Description, perl = TRUE)), '[',1))
+#==================================================================================
+
+#output to xlsx file (i need to look at the data again)
+write.xlsx(AllData, file = "data/output.xlsx", sheetName = "output2")
 #drop all the description column after getting what we want
 drops <- "Description"
 AllData <- AllData[,!(names(AllData) %in% drops)]
 
+#====== grep commands to clean locations ========================================
+clean <- list(c("wp|wright", "trans|scott", "socom|mac", "san a|lack|jbsa", "trav", "minot", "mcgui|MDL", "mcconn", "dill", "scott", "max", "fair", "\\bgf\\b|forks", "ells", "dov", "dfas", "little|lra"), c("Wright P. AFB", "Scott AFB", "MacDill AFB", "JB SA", "Travis AFB", "Minot AFB", "JB MDL", "McConnell AFB", "MacDill AFB", "Scott AFB", "Maxwell AFB", "Fairchild AFB", "Grand F. AFB", "Ellsworth AFB", "Dover AFB", "DFAS", "Little R. AFB"))
+# use custom function to clean the location column
+AllData$Location <- clean.column(AllData$Location, clean)
+#get all limestone, but not little rock
+# but limestone is a town in OHIO!! alltogether need dfas
+#grep("(\\bli\\b)|lime", AllData$Location, ignore.case = TRUE, value = TRUE)
+#get little rock
+#================================================================================
+
+
+#========= Time operations will change when seperating by group (severity lvl or location)
 #Make Time to Failure Column
 AllData$Time.to.Fail <- difftime(AllData$Submit.Date, AllData$Submit.Date[1], units = "hours")
 #Make Times Between Failure column
 AllData$Time.Between.Failure <- make.interFailures(AllData$Time.to.Fail)
 write(AllData$Time.to.Fail, "data/Failure_Times.txt", sep = "\n")
 write(AllData$Time.Between.Failure, "data/Time_Between_Failure.txt", sep = "\n")
+#===================================================================================
 
 #Using survival packages to plot Kaplan Maier
 #Failure Times

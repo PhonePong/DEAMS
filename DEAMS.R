@@ -11,7 +11,7 @@ library(gridExtra)
 source("misc.R")
 
 # Getting the data
-AllData <- read.xlsx(filePath, 1, startRow = 6, colIndex = c(1, 4, 5, 6, 7, 9))
+AllData <- read.xlsx("data/DEAMS_SERENA.xlsx", 1, startRow = 6, colIndex = c(1, 4, 5, 6, 7, 9))
 AllData$Type <- gsub('DEAMS - ', '', AllData$Type)
 AllData$Severity <- gsub('Severity ', '', AllData$Severity)
 AllData <- AllData[order(AllData$Submit.Date), ]
@@ -27,7 +27,7 @@ AllData$Phone <- trimws(sapply(regmatches(AllData$Description, gregexpr("(?<=((P
 #==================================================================================
 
 #output to xlsx file (i need to look at the data again)
-write.xlsx(AllData, file = "data/output.xlsx", sheetName = "output2")
+#write.xlsx(AllData, file = "data/output.xlsx", sheetName = "output2")
 #drop all the description column after getting what we want
 drops <- "Description"
 AllData <- AllData[,!(names(AllData) %in% drops)]
@@ -42,8 +42,8 @@ AllData$Location <- clean.column(AllData$Location, clean)
 #get little rock
 #================================================================================
 
-#=======================================================================================================================================
-# subset data by selecting only rows where there are more than 3 occurences of each location
+#=========== Create New Data frame ====================================================================================================
+# subset data by selecting only rows where there are more than 3 occurences of each location 
 t <- table(AllData$Location)
 NewData <- AllData[AllData$Location %in% names(t[t >= 3]), ]
 
@@ -51,9 +51,15 @@ NewData <- AllData[AllData$Location %in% names(t[t >= 3]), ]
 NewData <- NewData[order(NewData$Location, NewData$Submit.Date), ]
 #=======================================================================================================================================
 
-#========================= Time operations by group ==================================================================================== 
-# Inter-failures
-NewData[ , newCol := c(0, difftime(Submit.Date[-1L], Submit.Date[-.N], units = "hours")), by = Location]
+#======================================================= Time operations by group ======================================================
+# Inter-failures using data.table package
+# need to coerce for the package features to work
+setDT(NewData)
+setkey(NewData, Location)
+NewData[ , Time.Between.Fails := c(0, difftime(Submit.Date[-1L], Submit.Date[-.N], units = "hours")), by = Location]
+# coerce back to dataframe for normal operations
+setDF(NewData)
+
 # cumulative time-to-fail
 NewData$Time.To.Fail <- unlist(by(NewData, NewData$Location, function(x) difftime(x$Submit.Date, x$Submit.Date[1], units= "hours")))
 #=======================================================================================================================================
@@ -63,8 +69,8 @@ NewData$Time.To.Fail <- unlist(by(NewData, NewData$Location, function(x) difftim
 # AllData$Time.to.Fail <- difftime(AllData$Submit.Date, AllData$Submit.Date[1], units = "hours")
 # #Make Times Between Failure column
 # AllData$Time.Between.Failure <- make.interFailures(AllData$Time.to.Fail)
-write(AllData$Time.to.Fail, "data/Failure_Times.txt", sep = "\n")
-write(AllData$Time.Between.Failure, "data/Time_Between_Failure.txt", sep = "\n")
+#write(AllData$Time.to.Fail, "data/Failure_Times.txt", sep = "\n")
+#write(AllData$Time.Between.Failure, "data/Time_Between_Failure.txt", sep = "\n")
 #==================================================================================================================================
 
 

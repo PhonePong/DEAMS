@@ -53,15 +53,22 @@ NewData <- NewData[order(NewData$Location, NewData$Submit.Date), ]
 
 #======================================================= Time operations by group ======================================================
 # Inter-failures using data.table package
+
+#************** BUG WARNING: After using data.table, ********************
+                #normal ops for cumsums do not differentiate 
+                #between EMPTY and ellsworth
+
+#************** SOLUTION: calculate cumsums before using data.table *****
+
+# cumulative time-to-fail
+NewData$Time.To.Fail <- unlist(by(NewData, NewData$Location, function(x) difftime(x$Submit.Date, x$Submit.Date[1], units= "hours")))
+
 # need to coerce for the package features to work
 setDT(NewData)
 setkey(NewData, Location)
 NewData[ , Time.Between.Fails := c(0, difftime(Submit.Date[-1L], Submit.Date[-.N], units = "hours")), by = Location]
 # coerce back to dataframe for normal operations
 setDF(NewData)
-
-# cumulative time-to-fail
-NewData$Time.To.Fail <- unlist(by(NewData, NewData$Location, function(x) difftime(x$Submit.Date, x$Submit.Date[1], units= "hours")))
 #=======================================================================================================================================
 
 #========================= Not using these ========================================================================================
@@ -73,8 +80,52 @@ NewData$Time.To.Fail <- unlist(by(NewData, NewData$Location, function(x) difftim
 #write(AllData$Time.Between.Failure, "data/Time_Between_Failure.txt", sep = "\n")
 #==================================================================================================================================
 
+#===================== Subset by Sample Size ===============================================
+t <- table(NewData$Location)
+
+# Because the UNKNOWN location is largest and longest running sample
+Unknown.Sample <- NewData[NewData$Location %in% "UNKNOWN", ]
+drops <- "UNKNOWN"
+# Make a new frame since we use NewData for overlay images
+SubData <- NewData[!(NewData$Location %in% drops), ]
+
+Small.Sample <- SubData[SubData$Location %in% names(t[(t >= 3) & (t < 11)]), ]
+Medium.Sample <- SubData[SubData$Location %in% names(t[(t >= 11) & (t < 60)]), ]
+Large.Sample <- SubData[SubData$Location %in% names(t[(t >= 60) & (t < 300)]), ]
+#===========================================================================================
 
 #Using survival packages to plot Kaplan Meier
+Full.Surv <- survfit(Surv(Time.To.Fail) ~ Location, data = NewData)
+Full.gg <- ggsurvplot(Full.Surv, fun = "event", conf.int = TRUE, color = "strata", ggtheme = theme_bw(), legend = "none")
+Full.km <- Full.gg$plot + facet_wrap(~Location)
+
+UNKNOWN.Surv <- survfit(Surv(Time.To.Fail) ~ Location, data = Unknown.Sample)
+UNKNOWN.gg <- ggsurvplot(UNKNOWN.Surv, fun = "event", conf.int = TRUE, color = "strata", ggtheme = theme_bw(), legend = "none")
+
+
+Small.Surv <- survfit(Surv(Time.To.Fail) ~ Location, data = Small.Sample)
+Small.gg <- ggsurvplot(Small.Surv, fun = "event", conf.int = TRUE, color = "strata", ggtheme = theme_bw(), legend = "none")
+Small.km <- Small.gg$plot + facet_wrap(~Location)
+
+Medium.Surv <- survfit(Surv(Time.To.Fail) ~ Location, data = Medium.Sample)
+Medium.gg <- ggsurvplot(Medium.Surv, fun = "event", conf.int = TRUE, color = "strata", ggtheme = theme_bw(), legend = "none")
+Medium.km <- Medium.gg$plot + facet_wrap(~Location)
+
+Large.Surv <- survfit(Surv(Time.To.Fail) ~ Location, data = Large.Sample)
+Large.gg <- ggsurvplot(Large.Surv, fun = "event", conf.int = TRUE, color = "strata", ggtheme = theme_bw(), legend = "none")
+Large.km <- Large.gg$plot + facet_wrap(~Location)
+
+
+#========================= Export Images ========================================================
+Full.km %>% ggexport(filename = "data/full_scale.png", width = 1080, height = 900)
+Full.gg %>% ggexport(filename = "data/full_overlay.png", width = 1080, height = 900)
+
+Large.km %>% ggexport(filename = "data/large.png", width = 1080, height = 400)
+Medium.km %>% ggexport(filename = "data/medium.png", width = 1080, height = 900)
+Small.km %>% ggexport(filename = "data/smalls.png", width = 1080, height = 900)
+UNKNOWN.gg$plot %>% ggexport(filename = "data/unknown_data.png", width = 900, height = 900)
+#===============================================================================================
+
 #Failure Times
 Time.to.Fail.Surv <- Surv(AllData$Time.to.Fail)
 Time.to.Fail.km <- survfit(Time.to.Fail.Surv ~ 1, conf.int = .95, conf.type = "plain")

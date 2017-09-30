@@ -64,5 +64,6 @@ clean.column <- function(column, solutions){
   for (i in seq_along(solutions[[1]])) {
     column[which(column %in% unique(grep(solutions[[1]][i], column, ignore.case = TRUE, value = TRUE)))] <- solutions[[2]][i] 
   }
+  column[which(is.na(column))] <- "UNKNOWN"
   return(column)
 }

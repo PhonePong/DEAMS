@@ -32,8 +32,8 @@ write.xlsx(AllData, file = "data/output.xlsx", sheetName = "output2")
 drops <- "Description"
 AllData <- AllData[,!(names(AllData) %in% drops)]
 
-#====== grep commands to clean locations ========================================
-clean <- list(c("wp|wright", "trans|scott", "socom|mac", "san a|lack|jbsa", "trav", "minot", "mcgui|MDL", "mcconn", "dill", "scott", "max", "fair", "\\bgf\\b|forks", "ells", "dov", "dfas", "little|lra"), c("Wright P. AFB", "Scott AFB", "MacDill AFB", "JB SA", "Travis AFB", "Minot AFB", "JB MDL", "McConnell AFB", "MacDill AFB", "Scott AFB", "Maxwell AFB", "Fairchild AFB", "Grand F. AFB", "Ellsworth AFB", "Dover AFB", "DFAS", "Little R. AFB"))
+#========================== grep commands to clean locations ====================
+clean <- list(c("wp|wright", "trans|scott", "socom|mac", "san a|lack|jbsa", "trav", "minot", "mcgui|MDL", "mcconn", "dill", "scott", "max", "fair", "\\bgf\\b|forks", "ells", "dov", "dfas", "little|lra", "^$", "deams", "pope"), c("Wright P. AFB", "Scott AFB", "MacDill AFB", "JB SA", "Travis AFB", "Minot AFB", "JB MDL", "McConnell AFB", "MacDill AFB", "Scott AFB", "Maxwell AFB", "Fairchild AFB", "Grand F. AFB", "Ellsworth AFB", "Dover AFB", "DFAS", "Little R. AFB", "EMPTY", "DEAMS", "Pope AFB"))
 # use custom function to clean the location column
 AllData$Location <- clean.column(AllData$Location, clean)
 #get all limestone, but not little rock
@@ -42,17 +42,33 @@ AllData$Location <- clean.column(AllData$Location, clean)
 #get little rock
 #================================================================================
 
+#=======================================================================================================================================
+# subset data by selecting only rows where there are more than 3 occurences of each location
+t <- table(AllData$Location)
+NewData <- AllData[AllData$Location %in% names(t[t >= 3]), ]
 
-#========= Time operations will change when seperating by group (severity lvl or location)
-#Make Time to Failure Column
-AllData$Time.to.Fail <- difftime(AllData$Submit.Date, AllData$Submit.Date[1], units = "hours")
-#Make Times Between Failure column
-AllData$Time.Between.Failure <- make.interFailures(AllData$Time.to.Fail)
+# sort by location, and then by date
+NewData <- NewData[order(NewData$Location, NewData$Submit.Date), ]
+#=======================================================================================================================================
+
+#========================= Time operations by group ==================================================================================== 
+# Inter-failures
+NewData[ , newCol := c(0, difftime(Submit.Date[-1L], Submit.Date[-.N], units = "hours")), by = Location]
+# cumulative time-to-fail
+NewData$Time.To.Fail <- unlist(by(NewData, NewData$Location, function(x) difftime(x$Submit.Date, x$Submit.Date[1], units= "hours")))
+#=======================================================================================================================================
+
+#========================= Not using these ========================================================================================
+# #Make Time to Failure Column
+# AllData$Time.to.Fail <- difftime(AllData$Submit.Date, AllData$Submit.Date[1], units = "hours")
+# #Make Times Between Failure column
+# AllData$Time.Between.Failure <- make.interFailures(AllData$Time.to.Fail)
 write(AllData$Time.to.Fail, "data/Failure_Times.txt", sep = "\n")
 write(AllData$Time.Between.Failure, "data/Time_Between_Failure.txt", sep = "\n")
-#===================================================================================
+#==================================================================================================================================
 
-#Using survival packages to plot Kaplan Maier
+
+#Using survival packages to plot Kaplan Meier
 #Failure Times
 Time.to.Fail.Surv <- Surv(AllData$Time.to.Fail)
 Time.to.Fail.km <- survfit(Time.to.Fail.Surv ~ 1, conf.int = .95, conf.type = "plain")
